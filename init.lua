@@ -15,7 +15,7 @@ filter_logger.datefmt = false
 filter_logger.level = 'debug'
 
 ---A Hammerspoon Spoon for providing a visor or "quake"/"guake"/"yakuake" style
----drop-down terminal for Kitty, similar to iTerm2's Hotkey Window profile.
+---drop-down terminal, similar to iTerm2's Hotkey Window profile.
 ---@class Visor
 local M = {
   name = "Visor",
@@ -88,7 +88,6 @@ end
 ---
 ---@see Visor.bindHotKeys
 ---@see Visor.configure
----@see Visor.configureForKitty
 ---@return Visor? self returns self on method call
 function M:start()
   log.v("Start called")
@@ -140,8 +139,7 @@ end
 ---Declarative configuration for creating a Visor window out of a Terminal app.
 ---This is not currently well documented as the API is not stable, but reverse engineering
 ---what's going on shouldn't be too bad. The primary use-case right now is to be called by
----`Visor.configureForKitty`
----@see Visor.configureForKitty
+---App-specific configuration methods.
 ---@param term table Declarative description of the terminal app and how to manipulate it to make a Visor window
 ---@param opts table key-value options/parameters that can be set by the user. While there's no good API for it now, these aren't the same as the declarative terminal templates as they could be tweaked at any time and are often general amongst terminal apps.
 ---@return Visor self returns self on method call
@@ -153,45 +151,33 @@ function M:configure(term, opts)
   return self
 end
 
----Calls `Visor:configure` with a `term` argument configured for the Kitty terminal app and the provided `opts` table.
+---Calls `Visor:configure` with a `term` argument configured for the WezTerm terminal app and the provided `opts` table.
 ---@see Visor.configure
 ---@param opts table user configured options
 ---@return Visor self returns self on method call
-function M:configureForKitty(opts)
-  log.i("Configuring Visor.spoon for Kitty integration")
-  local kitty = dofile(hs.spoons.resourcePath("kitty/init.lua"))
-  local windowIdentifier = "KITTY_HOTKEY_WINDOW"
-  local profilePath = hs.spoons.resourcePath("kitty/visor_window.conf")
+function M:configureForWezTerm(opts)
+  log.i("Configuring Visor.spoon for WezTerm integration")
+  local wezterm = dofile(hs.spoons.resourcePath("wezterm/init.lua"))
+  
   opts = opts or {}
-  opts.kitten = opts.kitten or "/Applications/kitty.app/Contents/MacOS/kitten"
-
-  local kittyTemplate = kitty.fromTemplate {
-    macApp = "kitty.app",
-    bundleId = "net.kovidgoyal.kitty",
-    windowIdentifier = windowIdentifier,
-    executableName = "kitty",
-    profilePath = profilePath,
+  
+  local weztermTemplate = wezterm.fromTemplate {
+    macApp = "WezTerm.app",
+    bundleId = "com.github.wez.wezterm",
+    windowTitle = "VISOR",
+    executableName = "wezterm",
     launchCmdLine = {
-      executable = "kitty",
-      nohup = true,
+      executable = "wezterm",
       background = true,
       args = {
-        "-d",
-        "$HOME",
-        "-1",
-        "--instance-group",
-        windowIdentifier,
-        "-T",
-        windowIdentifier,
-        "--listen-on",
-        "unix:" .. kitty.socket,
-        "-c",
-        profilePath,
-        "false"
+        "start",
+        "--class", "org.wez.wezterm.visor",
+        "--cwd", os.getenv("HOME") or "$HOME",
       }
     }
   }
-  return self:configure(kittyTemplate, opts)
+  
+  return self:configure(weztermTemplate, opts)
 end
 
 ---Primary `action` for the Spoon. Hides or reveals the terminal window.
